@@ -1,0 +1,1 @@
+vasm -m68000 -Ftos -noesc -quiet -no-opt %1.s -o %1.tos

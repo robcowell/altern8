@@ -2,11 +2,12 @@
 
 	jsr initialise
 	jsr init
+	bclr #0,$484
 	jsr music_init
 	jsr piccy
 	move.l	#vbl,$70
 
-	bclr #0,$484
+	
 
 
 wait	
@@ -53,27 +54,32 @@ piccy	movem.l	picture+2,d0-d7
 	lsr.w	#8,d0
 	move.b	d0,$ff8201	;set vid address high byte
 
-	move.l	#picture+34,a1
+	move.l	#picture+34,a1	;skip header and palette data
 	move.l	#(32000/4)-1,d0
+
 .loop1	move.l	(a1)+,(a0)+		;copy pic to screen
 	dbf	d0,.loop1
-	move.l	#((160*10)/4)-1,d0
+	move.l	#((200*10)/4)-1,d0
+
 .loop2	move.l	#0,(a0)+
 	dbf	d0,.loop2
 	move.l	#picture+34,a1
-	move.l	#((200*78)/4)-1,d0
+	move.l	#((160*78)/4)-1,d0
 
-Over:
-	move.l #$ffffffff,d1
-	move.l	d1,(a0)+
+	move.l #sprite+34,a1
+	move.l	#((160*40)/4)-1,d7
+	moveq	#-1,d0	
+
+Over:	
+	move.l	(a1)+,(a0)+
 	dbra	d7,Over
 	rts
 
 *** VBL Routine ***
 vbl
 	movem.l	d0-d7/a0-a6,-(sp)	;backup registers
-	move.w #$700,$ffff8240.w
-	
+	;move.w #$700,$ffff8240.w	;bg color red
+
 	jsr music_play
 	
 	st	Vsync
@@ -82,7 +88,7 @@ vbl
 	
 	move.b	#199,$fffffa21.w
 	move.b	#8,$fffffa1b.w
-	move.w #$000,$ffff8240.w
+	move.w #$000,$ffff8240.w	;bg color black
 
 	movem.l	(sp)+,d0-d7/a0-a6	;restore registers
 	rte
@@ -123,6 +129,7 @@ music_play:
 	section	data
 
 picture	incbin	a8_320.pi1
+sprite  incbin  sprite.pi1
 
 blackpal:
 		dcb.w	16,$0000			;Black palette

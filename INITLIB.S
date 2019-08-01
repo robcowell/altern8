@@ -39,7 +39,7 @@ initialise:
 	trap	#14
 	add.l	#12,a7
 * end resolution save	
-
+	move.b	#$12,$fffffc02.w		;Kill mouse
 	rts
 
 
@@ -70,9 +70,29 @@ restore:
 	move.l	#$0a0a0000,(a0)
 * end soundchip
 
+enableMouse:
+	move.b	#$8,$fffffc02.w			;Enable mouse
+	move.l	#$80,d0
+.x
+	btst	#1,$fffffc00.w
+	beq.s	.x
+	move.b	d0,$fffffc02.w
+
+	move.l	#$01,d0
+.y
+	btst	#1,$fffffc00.w
+	beq.s	.y
+	move.b	d0,$fffffc02.w
+
+	moveq	#0,d0
+.z	
+	btst	#0,$fffffc00.w
+	beq.s	.z
+	move.b	d0,$fffffc02.w
+
 * exit
-	clr.w	-(sp)			; Bye
-	trap	#1
+;	clr.w	-(sp)			; Bye
+;	trap	#1
 	
 	rts
 		

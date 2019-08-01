@@ -41,6 +41,7 @@ init
 	move.b	$fffa31,(a0)+		;backup timer b data
 
 	
+	
 
 piccy	movem.l	picture+2,d0-d7
 	movem.l	d0-d7,$ff8240
@@ -84,7 +85,12 @@ vbl
 	
 	st	Vsync
 
+	sf	$fffffa21.w	* Stop Timer B
+	sf	$fffffa1b.w
 	move.l	#Over_rout,$120.w
+	or.b    #1,$fffffa13.w                  ;int mask A
+	or.b    #1,$fffffa07.w                  ;int enable A
+	
 	
 	move.b	#199,$fffffa21.w
 	move.b	#8,$fffffa1b.w
@@ -94,8 +100,9 @@ vbl
 	rte
 
 Over_rout:
-	sf	$fffffa21.w	* Stop Timer B
-	sf	$fffffa1b.w
+	
+
+	move.w #$700,$ffff8240.w
 
 	REPT	95	* Wait line end
 	nop

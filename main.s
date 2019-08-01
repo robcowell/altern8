@@ -1,9 +1,46 @@
 	section text
 
 	jsr initialise
+	jsr init
 	jsr music_init
+	jsr piccy
+	move.l	#vbl,$70
+
 	bclr #0,$484
+
+
+wait	
+	cmp.b	#57,$FFFFFC02
+	bne.s	wait
+	jsr music_deinit
+	bset #0,$484.w
+
+	move.l	#backup,a0
+	move.l	(a0)+,$70		;restore vector $70 (vbl)
+	move.l	(a0)+,$120		;restore vector $120 (timer b)
+	move.b	(a0)+,$fffa07		;restore enable a
+	move.b	(a0)+,$fffa13		;restore mask a
+	move.b	(a0)+,$fffa15		;restore mask b
+	move.b	(a0)+,$fffa1b		;restore timer b control
+	move.b	(a0)+,$fffa21		;restore timer b data
+
+	jsr restore
+
+	clr.w -(sp)			;exit
+	trap #1
+
+init
+	move.l	#backup,a0
+	move.l	$70,(a0)+		;backup vector $70 (VBL)
+	move.l	$120,(a0)+		;backup vector $120 (timer b)
+	move.b	$fffa07,(a0)+		;backup enable a
+	move.b	$fffa13,(a0)+		;backup mask a
+	move.b	$fffa15,(a0)+		;backup mask b
+	move.b	$fffa1b,(a0)+		;backup timer b control
+	move.b	$fffa31,(a0)+		;backup timer b data
+
 	
+
 piccy	movem.l	picture+2,d0-d7
 	movem.l	d0-d7,$ff8240
 
@@ -24,46 +61,48 @@ piccy	movem.l	picture+2,d0-d7
 .loop2	move.l	#0,(a0)+
 	dbf	d0,.loop2
 	move.l	#picture+34,a1
-	move.l	#((160*78)/4)-1,d0
+	move.l	#((200*78)/4)-1,d0
 
-	move.l	#backup,a0
-	move.l	$70,(a0)+		;backup vector $70 (VBL)
-	move.l	$120,(a0)+		;backup vector $120 (timer b)
-	move.b	$fffa07,(a0)+		;backup enable a
-	move.b	$fffa13,(a0)+		;backup mask a
-	move.b	$fffa15,(a0)+		;backup mask b
-	move.b	$fffa1b,(a0)+		;backup timer b control
-	move.b	$fffa31,(a0)+		;backup timer b data
-
-	move.l	#vbl,$70
-
-wait	cmp.b	#57,$FFFFFC02
-	bne.s	wait
-	jsr music_deinit
-	bset #0,$484.w
-
-	move.l	#backup,a0
-	move.l	(a0)+,$70		;restore vector $70 (vbl)
-	move.l	(a0)+,$120		;restore vector $120 (timer b)
-	move.b	(a0)+,$fffa07		;restore enable a
-	move.b	(a0)+,$fffa13		;restore mask a
-	move.b	(a0)+,$fffa15		;restore mask b
-	move.b	(a0)+,$fffa1b		;restore timer b control
-	move.b	(a0)+,$fffa21		;restore timer b data
-
-	jsr restore
-
-	clr.w -(sp)			;exit
-	trap #1
+Over:
+	move.l #$ffffffff,d1
+	move.l	d1,(a0)+
+	dbra	d7,Over
+	rts
 
 *** VBL Routine ***
 vbl
 	movem.l	d0-d7/a0-a6,-(sp)	;backup registers
+	move.w #$700,$ffff8240.w
+	
 	jsr music_play
+	
+	st	Vsync
+
+	move.l	#Over_rout,$120.w
+	
+	move.b	#199,$fffffa21.w
+	move.b	#8,$fffffa1b.w
+	move.w #$000,$ffff8240.w
+
 	movem.l	(sp)+,d0-d7/a0-a6	;restore registers
 	rte
 
+Over_rout:
+	sf	$fffffa21.w	* Stop Timer B
+	sf	$fffffa1b.w
 
+	REPT	95	* Wait line end
+	nop
+	ENDR	
+	sf	$ffff820a.w	* Modif Frequency 60 Hz !
+
+	REPT	28	* Wait a little
+	nop
+	ENDR
+
+	move.b	#$2,$ffff820a.w * 50 Hz !
+
+	rte
 
 music_init:
 	jsr	music_lance_pt50_init
@@ -77,7 +116,6 @@ music_play:
 	jsr	music_lance_pt50_play
 	rts
 		
-	include 'ice_dpck.s'
 	include	'initlib.s'
 	include	'pt_src50.s'		;Protracker player, Lance 50 kHz (STe)
 
@@ -85,13 +123,14 @@ music_play:
 	section	data
 
 picture	incbin	a8_320.pi1
-music	incbin	androids.snd	
 
 blackpal:
 		dcb.w	16,$0000			;Black palette
+
 	section	bss
 		
 	ds.b	256
 screen	ds.b	160*288
 backup	ds.b	14
-depack	ds.b	20000
+Vsync:	ds.b	1
+		ds.b	1
